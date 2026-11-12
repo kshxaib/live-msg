@@ -5,7 +5,8 @@ const os = require('os');
 const { spawn } = require('child_process');
 const { WebSocketServer } = require('ws');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+const isProduction = !!process.env.RENDER || !!process.env.PORT;
 let messages = [];
 
 // Helper to get local Wi-Fi / LAN IP
@@ -72,8 +73,13 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Start Server and Public Tunnel
-server.listen(PORT, () => {
+// Start Server
+server.listen(PORT, '0.0.0.0', () => {
+    if (isProduction) {
+        console.log(`Server is running in production on port ${PORT}`);
+        return;
+    }
+
     const localIp = getLocalIp();
 
     console.log(`Server is running!`);
