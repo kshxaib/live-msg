@@ -217,8 +217,13 @@
         }
 
         .input-form button.copied-anim {
-            background: #22c55e;
-            color: #ffffff;
+            background: #22c55e !important;
+            color: #ffffff !important;
+        }
+
+        .input-form button.error-anim {
+            background: #ef4444 !important;
+            color: #ffffff !important;
         }
 
         @media (max-width: 480px) {
@@ -355,10 +360,10 @@
             <textarea 
                 id="message-input" 
                 rows="1" 
-                placeholder="Message..." 
+                placeholder="Message or tap Paste & Send..." 
                 autocomplete="off"
             ></textarea>
-            <button type="submit" id="send-btn">Copy & Send</button>
+            <button type="submit" id="send-btn">Paste & Send</button>
         </form>
     </div>
 
@@ -562,9 +567,18 @@
         }
 
         // Auto-expand textarea
+        function updateButtonLabel() {
+            if (messageInput.value.length > 0) {
+                sendBtn.textContent = 'Send';
+            } else {
+                sendBtn.textContent = 'Paste & Send';
+            }
+        }
+
         messageInput.addEventListener('input', () => {
             messageInput.style.height = 'auto';
             messageInput.style.height = Math.min(messageInput.scrollHeight, 160) + 'px';
+            updateButtonLabel();
         });
 
         // Send on Enter (Shift + Enter for new line)
@@ -575,38 +589,18 @@
             }
         });
 
-        // Send Message: EXACT message, NO TRIM, NO CROP + Auto Copy & Send
-        chatForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const text = messageInput.value;
-            if (text === '') return; // Exact check: koi trim ya crop nahi
-
-            // 1. Auto Copy text to clipboard immediately on mobile & PC
-            copyTextToClipboard(text).then(() => {
-                if (sendBtn) {
-                    const originalText = sendBtn.textContent;
-                    sendBtn.textContent = 'Copied!';
-                    sendBtn.classList.add('copied-anim');
-                    setTimeout(() => {
-                        sendBtn.textContent = originalText;
-                        sendBtn.classList.remove('copied-anim');
-                    }, 1200);
-                }
-            }).catch(() => {});
-
+        // Core Send Message function (Preserves raw text, emojis, symbols, spaces)
+        function sendMessage(text) {
             const newMsg = {
                 id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
                 senderId: myId,
-                text: text, // Exact raw string with spaces, symbols, newlines
+                text: text,
                 timestamp: Date.now()
             };
 
             messages.push(newMsg);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
             appendMessageToUI(newMsg);
-
-            messageInput.value = '';
-            messageInput.style.height = 'auto';
 
             // Broadcast locally to other tabs
             if (broadcastChannel) {
@@ -617,6 +611,69 @@
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'NEW_MESSAGE', payload: newMsg }));
             }
+        }
+
+        // Automatic Paste from Clipboard & Send on Mobile & PC
+        async function handleAction() {
+            let text = messageInput.value;
+            let fromClipboard = false;
+
+            // If input is empty, automatically read whatever user copied to clipboard!
+            if (!text || text === '') {
+                try {
+                    if (navigator.clipboard && navigator.clipboard.readText) {
+                        const clipText = await navigator.clipboard.readText();
+                        if (clipText && clipText !== '') {
+                            text = clipText;
+                            fromClipboard = true;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Clipboard read error/blocked:', err);
+                }
+            }
+
+            // If both input and clipboard are empty
+            if (!text || text === '') {
+                if (sendBtn) {
+                    const originalText = sendBtn.textContent;
+                    sendBtn.textContent = 'Clipboard Empty!';
+                    sendBtn.classList.add('error-anim');
+                    setTimeout(() => {
+                        sendBtn.textContent = originalText;
+                        sendBtn.classList.remove('error-anim');
+                    }, 1200);
+                }
+                messageInput.focus();
+                return;
+            }
+
+            // Send message
+            sendMessage(text);
+
+            // Visual feedback
+            if (fromClipboard && sendBtn) {
+                sendBtn.textContent = 'Pasted & Sent!';
+                sendBtn.classList.add('copied-anim');
+                setTimeout(() => {
+                    sendBtn.classList.remove('copied-anim');
+                    updateButtonLabel();
+                }, 1200);
+            } else {
+                // If user typed manually, copy to clipboard as well for easy re-use
+                copyTextToClipboard(text).catch(() => {});
+            }
+
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            if (!fromClipboard) {
+                updateButtonLabel();
+            }
+        }
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleAction();
         });
 
         // Confirmation Modal for Clear
