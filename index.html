@@ -198,18 +198,44 @@
             background: #ffffff;
             color: #000000;
             border: none;
-            padding: 8px 20px;
+            padding: 8px 16px;
             border-radius: 8px;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             cursor: pointer;
-            transition: opacity 0.15s ease;
+            transition: all 0.15s ease;
             height: 36px;
             flex-shrink: 0;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .input-form button:hover {
             opacity: 0.85;
+        }
+
+        .input-form button.copied-anim {
+            background: #22c55e;
+            color: #ffffff;
+        }
+
+        @media (max-width: 480px) {
+            .input-form {
+                padding: 6px 8px;
+                gap: 6px;
+            }
+            .input-form button {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+            .bottom-bar {
+                padding: 10px 12px;
+            }
+            .messages-container {
+                padding: 60px 14px 85px 14px;
+            }
         }
 
         /* Confirmation Modal */
@@ -332,7 +358,7 @@
                 placeholder="Message..." 
                 autocomplete="off"
             ></textarea>
-            <button type="submit">Send</button>
+            <button type="submit" id="send-btn">Copy & Send</button>
         </form>
     </div>
 
@@ -359,10 +385,49 @@
         const messagesContainer = document.getElementById('messages-container');
         const chatForm = document.getElementById('chat-form');
         const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
         const openClearModalBtn = document.getElementById('open-clear-modal');
         const confirmModal = document.getElementById('confirm-modal');
         const cancelClearBtn = document.getElementById('cancel-clear');
         const confirmClearBtn = document.getElementById('confirm-clear');
+
+        // Robust Clipboard Copy Function for Mobile & PC
+        function copyTextToClipboard(text) {
+            if (!text) return Promise.resolve();
+
+            if (navigator.clipboard && window.isSecureContext) {
+                return navigator.clipboard.writeText(text).catch(() => fallbackCopyText(text));
+            } else if (navigator.clipboard) {
+                return navigator.clipboard.writeText(text).catch(() => fallbackCopyText(text));
+            } else {
+                return fallbackCopyText(text);
+            }
+        }
+
+        function fallbackCopyText(text) {
+            return new Promise((resolve, reject) => {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.top = "0";
+                textArea.style.left = "0";
+                textArea.style.position = "fixed";
+                textArea.style.opacity = "0";
+                textArea.setAttribute("readonly", "");
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                textArea.setSelectionRange(0, 99999); // Essential for mobile iOS/Android
+                try {
+                    const successful = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    if (successful) resolve();
+                    else reject(new Error('execCommand copy failed'));
+                } catch (err) {
+                    document.body.removeChild(textArea);
+                    reject(err);
+                }
+            });
+        }
 
         const STORAGE_KEY = 'live_chat_messages';
         let messages = [];
@@ -469,14 +534,14 @@
             copyBtn.type = 'button';
             copyBtn.textContent = 'Copy';
             copyBtn.addEventListener('click', () => {
-                navigator.clipboard.writeText(msg.text).then(() => {
+                copyTextToClipboard(msg.text).then(() => {
                     copyBtn.innerText = 'Copied!';
                     copyBtn.classList.add('copied');
                     setTimeout(() => {
                         copyBtn.innerText = 'Copy';
                         copyBtn.classList.remove('copied');
                     }, 1500);
-                });
+                }).catch(() => {});
             });
 
             footerEl.appendChild(timeEl);
@@ -510,11 +575,24 @@
             }
         });
 
-        // Send Message: EXACT message, NO TRIM, NO CROP
+        // Send Message: EXACT message, NO TRIM, NO CROP + Auto Copy & Send
         chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const text = messageInput.value;
             if (text === '') return; // Exact check: koi trim ya crop nahi
+
+            // 1. Auto Copy text to clipboard immediately on mobile & PC
+            copyTextToClipboard(text).then(() => {
+                if (sendBtn) {
+                    const originalText = sendBtn.textContent;
+                    sendBtn.textContent = 'Copied!';
+                    sendBtn.classList.add('copied-anim');
+                    setTimeout(() => {
+                        sendBtn.textContent = originalText;
+                        sendBtn.classList.remove('copied-anim');
+                    }, 1200);
+                }
+            }).catch(() => {});
 
             const newMsg = {
                 id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
