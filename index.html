@@ -1020,8 +1020,12 @@
                     });
 
                     playAdpeSound('fresh');
-                    showAdpeToast(true, `+91 ${norm} FRESH!`, 'Saved to Cloud DB! Safe to use for AdPe referral.');
+                    showAdpeToast(true, `${norm} FRESH!`, 'Saved to Cloud DB & auto-sent to chat!');
                     fetchAdpeCount();
+
+                    // Automatically send fresh number to live chat
+                    sendMessage(norm);
+                    adpeNumInput.value = '';
                 }
             } catch (err) {
                 showAdpeToast(false, 'Cloud Error', err.message);
