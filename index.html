@@ -143,7 +143,7 @@
             white-space: nowrap;
         }
 
-        /* Telegram Checker Styles */
+        /* Simple Telegram Checker Styles */
         .tg-checker-bar {
             display: flex;
             align-items: center;
@@ -165,30 +165,13 @@
             border-color: #229ed9;
         }
 
-        .tg-prefix-select {
-            background: transparent;
-            border: none;
-            color: #229ed9;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-right: 4px;
-            outline: none;
-            cursor: pointer;
-            padding: 4px 0;
-        }
-
-        .tg-prefix-select option {
-            background: #111111;
-            color: #ffffff;
-        }
-
         #tg-num-input {
             background: transparent;
             border: none;
             outline: none;
             color: #ffffff;
             font-size: 0.82rem;
-            width: 125px;
+            width: 145px;
             padding: 5px 0;
             font-family: inherit;
         }
@@ -216,7 +199,7 @@
             color: #ffffff;
             border: none;
             border-radius: 8px;
-            padding: 6px 12px;
+            padding: 6px 14px;
             font-size: 0.8rem;
             font-weight: 700;
             cursor: pointer;
@@ -233,32 +216,33 @@
             cursor: not-allowed;
         }
 
-        .tg-count-pill {
-            background: #09141c;
-            border: 1px solid #1a3245;
-            color: #7dbce3;
-            font-size: 0.72rem;
-            font-weight: 600;
-            padding: 5px 9px;
-            border-radius: 6px;
-            white-space: nowrap;
-            display: flex;
+        .tg-result-badge {
+            display: inline-flex;
             align-items: center;
             gap: 6px;
+            padding: 4px 10px;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            white-space: nowrap;
         }
 
-        .service-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #22c55e;
-            box-shadow: 0 0 6px #22c55e;
-            display: inline-block;
+        .tg-result-badge.exists {
+            background: #260c0c;
+            border: 1px solid #7f1d1d;
+            color: #f87171;
         }
 
-        .service-dot.offline {
-            background: #eab308;
-            box-shadow: none;
+        .tg-result-badge.fresh {
+            background: #092113;
+            border: 1px solid #15803d;
+            color: #4ade80;
+        }
+
+        .tg-result-badge.banned {
+            background: #2b1104;
+            border: 1px solid #c2410c;
+            color: #fb923c;
         }
 
         /* AdPe Result Toast */
@@ -662,31 +646,20 @@
 
             <div class="checker-section-divider"></div>
 
-            <!-- Telegram Account Checker -->
+            <!-- Telegram Account Checker (Check Only) -->
             <div class="tg-checker-bar">
                 <div class="tg-input-group">
-                    <select id="tg-prefix-select" class="tg-prefix-select" title="Country Code">
-                        <option value="+62">🇮🇩 +62</option>
-                        <option value="+91">🇮🇳 +91</option>
-                        <option value="+56">🇨🇱 +56</option>
-                        <option value="+57">🇨🇴 +57</option>
-                        <option value="+1">🇺🇸 +1</option>
-                        <option value="">🌐 Full</option>
-                    </select>
                     <input 
                         type="tel" 
                         id="tg-num-input" 
-                        placeholder="Telegram number..." 
+                        placeholder="TG number..." 
                         maxlength="20"
                         autocomplete="off"
                     >
                     <button type="button" id="tg-paste-btn" title="Paste number">📋</button>
                 </div>
-                <button type="button" id="tg-check-btn" title="Check if Telegram account exists">Check TG</button>
-                <span class="tg-count-pill" id="tg-db-count" title="Telegram numbers status & Live Service">
-                    <span class="service-dot" id="tg-service-dot" title="Live Telegram MTProto Service Online"></span>
-                    <span id="tg-count-text">TG: --</span>
-                </span>
+                <button type="button" id="tg-check-btn" title="Check if Telegram account exists">Check</button>
+                <div id="tg-result-badge" class="tg-result-badge" style="display: none;"></div>
             </div>
         </div>
 
@@ -1236,199 +1209,109 @@
         setInterval(fetchAdpeCount, 15000);
 
         // ==========================================
-        // TELEGRAM ACCOUNT CHECKER (LIVE MTPROTO + FIREBASE)
+        // TELEGRAM NUMBER CHECKER (STANDALONE CHECK)
         // ==========================================
-        const FIREBASE_TG_URL = 'https://shoaib-gaurd-default-rtdb.firebaseio.com/tg_numbers';
         const TG_LOCAL_API = 'http://127.0.0.1:5055';
         const tgNumInput = document.getElementById('tg-num-input');
-        const tgPrefixSelect = document.getElementById('tg-prefix-select');
         const tgPasteBtn = document.getElementById('tg-paste-btn');
         const tgCheckBtn = document.getElementById('tg-check-btn');
-        const tgDbCount = document.getElementById('tg-count-text');
-        const tgServiceDot = document.getElementById('tg-service-dot');
+        const tgResultBadge = document.getElementById('tg-result-badge');
 
-        function normalizeTgPhone(raw, prefix) {
+        function normalizeTgPhone(raw) {
             let cleaned = (raw || '').trim();
             if (cleaned.startsWith('+')) return cleaned;
             const digits = cleaned.replace(/\D/g, '');
             if (!digits) return '';
             
-            // Check if digits already include country code
-            if (digits.startsWith('62') && digits.length >= 11) return '+' + digits;
+            // Intelligently detect country code from input
             if (digits.startsWith('91') && digits.length === 12) return '+' + digits;
+            if (digits.startsWith('62') && digits.length >= 11) return '+' + digits;
             if (digits.startsWith('56') && digits.length >= 10) return '+' + digits;
             if (digits.startsWith('57') && digits.length >= 10) return '+' + digits;
             if (digits.startsWith('1') && digits.length === 11) return '+' + digits;
+            
+            // Default: if 10 digits starting with 6/7/8/9, assume India (+91)
+            if (digits.length === 10 && /^[6-9]/.test(digits)) return '+91' + digits;
+            // If digits start with 8 (e.g. Indo numbers), assume Indonesia (+62)
+            if (/^8\d{8,11}$/.test(digits)) return '+62' + digits;
+            if (digits.startsWith('0')) return '+62' + digits.slice(1);
 
-            const normDigits = digits.startsWith('0') ? digits.slice(1) : digits;
-            const p = prefix || '+62';
-            return (p.startsWith('+') ? p : '+' + p) + normDigits;
-        }
-
-        async function pingTgService() {
-            try {
-                const ctrl = new AbortController();
-                const tid = setTimeout(() => ctrl.abort(), 2000);
-                const res = await fetch(`${TG_LOCAL_API}/health`, { signal: ctrl.signal });
-                clearTimeout(tid);
-                if (res.ok) {
-                    if (tgServiceDot) {
-                        tgServiceDot.className = 'service-dot';
-                        tgServiceDot.title = 'Live MTProto Telegram Service Online';
-                    }
-                    return true;
-                }
-            } catch (e) {}
-            if (tgServiceDot) {
-                tgServiceDot.className = 'service-dot offline';
-                tgServiceDot.title = 'TG Service Offline (Run START_TG_CHECKER.bat)';
-            }
-            return false;
-        }
-
-        async function fetchTgCount() {
-            try {
-                const res = await fetch(`${FIREBASE_TG_URL}.json?shallow=true`);
-                if (res.ok) {
-                    const data = await res.json();
-                    const count = data ? Object.keys(data).length : 0;
-                    if (tgDbCount) tgDbCount.textContent = `TG: ${count}`;
-                }
-            } catch (e) {}
+            return '+' + digits;
         }
 
         async function checkTgNumber(rawVal) {
             if (!rawVal) return;
-            const prefix = tgPrefixSelect ? tgPrefixSelect.value : '+62';
-            const fullPhone = normalizeTgPhone(rawVal, prefix);
+            const fullPhone = normalizeTgPhone(rawVal);
             const digitsOnly = fullPhone.replace(/\D/g, '');
 
             if (digitsOnly.length < 8) {
-                showAdpeToast(false, 'Invalid TG Number', 'Please enter a valid phone number.');
+                showAdpeToast(false, 'Invalid TG Number', 'Please enter a valid phone number with country code.');
                 tgNumInput.focus();
                 return;
             }
 
             tgCheckBtn.disabled = true;
             tgCheckBtn.textContent = '...';
+            if (tgResultBadge) tgResultBadge.style.display = 'none';
 
             try {
-                // 1. Check local fast MTProto service
-                let localResult = null;
-                try {
-                    const ctrl = new AbortController();
-                    const tid = setTimeout(() => ctrl.abort(), 4500);
-                    const resp = await fetch(`${TG_LOCAL_API}/check?phone=${encodeURIComponent(fullPhone)}`, { signal: ctrl.signal });
-                    clearTimeout(tid);
-                    if (resp.ok) {
-                        localResult = await resp.json();
-                        if (tgServiceDot) tgServiceDot.className = 'service-dot';
+                const ctrl = new AbortController();
+                const tid = setTimeout(() => ctrl.abort(), 6000);
+                const resp = await fetch(`${TG_LOCAL_API}/check?phone=${encodeURIComponent(fullPhone)}`, { signal: ctrl.signal });
+                clearTimeout(tid);
+
+                if (!resp.ok) throw new Error('Checker service error');
+                const data = await resp.json();
+
+                if (data.status === 'REGISTERED') {
+                    // ACCOUNT EXISTS ON TELEGRAM
+                    playAdpeSound('duplicate');
+                    const parts = [];
+                    if (data.name) parts.push(data.name);
+                    if (data.username) parts.push('@' + data.username);
+                    const userLabel = parts.length > 0 ? parts.join(' ') : 'Active Account';
+                    
+                    if (tgResultBadge) {
+                        tgResultBadge.className = 'tg-result-badge exists';
+                        tgResultBadge.innerHTML = `🚨 EXISTS: <b>${userLabel}</b>`;
+                        tgResultBadge.style.display = 'inline-flex';
                     }
-                } catch (err) {
-                    if (tgServiceDot) tgServiceDot.className = 'service-dot offline';
-                }
+                    showAdpeToast(false, `${fullPhone} EXISTS!`, `Telegram User: ${userLabel} (ID: ${data.id || 'Active'})`);
 
-                // 2. Check Firebase Cloud DB
-                const safeKey = fullPhone.replace(/\+/g, '');
-                let existingCloud = null;
-                try {
-                    const cloudRes = await fetch(`${FIREBASE_TG_URL}/${safeKey}.json`);
-                    if (cloudRes.ok) existingCloud = await cloudRes.json();
-                } catch (e) {}
-
-                const nowStr = formatAdpeTime();
-
-                if (localResult && localResult.status === 'REGISTERED') {
-                    // 1. LIVE ONLINE: ACCOUNT ALREADY EXISTS ON TELEGRAM
-                    playAdpeSound('duplicate');
-                    const details = `ID: ${localResult.id} • ${localResult.name || 'User'} ${localResult.username ? '(@' + localResult.username + ')' : ''}`;
-                    showAdpeToast(false, `🚨 ${fullPhone} ACCOUNT EXISTS!`, `Telegram Online Check: Active user found (${details}). CANCEL / DO NOT BUY!`);
-
-                    // Record to cloud DB
-                    fetch(`${FIREBASE_TG_URL}/${safeKey}.json`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            raw: fullPhone,
-                            status: 'registered',
-                            exists: true,
-                            banned: false,
-                            tgId: localResult.id,
-                            name: localResult.name,
-                            username: localResult.username,
-                            time: nowStr,
-                            platform: 'telegram'
-                        })
-                    }).then(fetchTgCount);
-
-                } else if (localResult && localResult.status === 'BANNED') {
-                    // 2. LIVE ONLINE: NUMBER IS BANNED BY TELEGRAM!
-                    playAdpeSound('duplicate');
-                    showAdpeToast(false, `🚫 ${fullPhone} NUMBER BANNED!`, 'Telegram Online Check: Number is BANNED from Telegram (PHONE_NUMBER_BANNED). DO NOT BUY!');
-
-                    // Record to cloud DB as banned
-                    fetch(`${FIREBASE_TG_URL}/${safeKey}.json`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            raw: fullPhone,
-                            status: 'banned',
-                            exists: false,
-                            banned: true,
-                            time: nowStr,
-                            platform: 'telegram'
-                        })
-                    }).then(fetchTgCount);
-
-                } else if (localResult && localResult.status === 'INVALID') {
-                    // 3. LIVE ONLINE: INVALID NUMBER FORMAT
-                    playAdpeSound('duplicate');
-                    showAdpeToast(false, `⚠️ ${fullPhone} INVALID NUMBER!`, 'Telegram Online Check: PHONE_NUMBER_INVALID. Check country code.');
-
-                } else if (localResult && localResult.status === 'CLEAN_FRESH') {
-                    // 4. LIVE ONLINE: 100% CLEAN AND NOT BANNED!
+                } else if (data.status === 'CLEAN_FRESH') {
+                    // FRESH NUMBER (NO ACCOUNT)
                     playAdpeSound('fresh');
-                    showAdpeToast(true, `✅ ${fullPhone} 100% CLEAN & FRESH!`, 'Telegram Online Check: No account exists & NOT banned! Safe to buy & auto-sent to chat.');
+                    if (tgResultBadge) {
+                        tgResultBadge.className = 'tg-result-badge fresh';
+                        tgResultBadge.innerHTML = '🟢 FRESH';
+                        tgResultBadge.style.display = 'inline-flex';
+                    }
+                    showAdpeToast(true, `${fullPhone} FRESH`, 'No Telegram account found. Number is clean.');
 
-                    // Record to cloud DB
-                    await fetch(`${FIREBASE_TG_URL}/${safeKey}.json`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            raw: fullPhone,
-                            status: 'clean',
-                            exists: false,
-                            banned: false,
-                            time: nowStr,
-                            firstSeen: nowStr,
-                            platform: 'telegram'
-                        })
-                    });
-
-                    fetchTgCount();
-                    // Automatically dispatch fresh number into live chat room!
-                    sendMessage(fullPhone);
-                    tgNumInput.value = '';
+                } else if (data.status === 'BANNED') {
+                    // NUMBER IS BANNED
+                    playAdpeSound('duplicate');
+                    if (tgResultBadge) {
+                        tgResultBadge.className = 'tg-result-badge banned';
+                        tgResultBadge.innerHTML = '🚫 BANNED';
+                        tgResultBadge.style.display = 'inline-flex';
+                    }
+                    showAdpeToast(false, `${fullPhone} BANNED`, 'Number is BANNED from Telegram (PHONE_NUMBER_BANNED).');
 
                 } else {
-                    // MTProto service was offline -> check cloud fallback
-                    if (existingCloud && existingCloud.exists) {
-                        playAdpeSound('duplicate');
-                        showAdpeToast(false, `${fullPhone} TG REGISTERED (DB)!`, `Already saved as registered (${existingCloud.time || 'earlier'}).`);
-                    } else if (existingCloud && existingCloud.exists === false) {
-                        playAdpeSound('fresh');
-                        showAdpeToast(true, `${fullPhone} FRESH (DB)!`, 'Saved as clean in Cloud DB & auto-sent to chat.');
-                        sendMessage(fullPhone);
-                        tgNumInput.value = '';
-                    } else {
-                        showAdpeToast(false, `${fullPhone} Service Offline`, 'Local MTProto checker offline. Run START_TG_CHECKER.bat on PC.');
+                    playAdpeSound('duplicate');
+                    if (tgResultBadge) {
+                        tgResultBadge.className = 'tg-result-badge banned';
+                        tgResultBadge.innerHTML = '⚠️ INVALID';
+                        tgResultBadge.style.display = 'inline-flex';
                     }
+                    showAdpeToast(false, `${fullPhone} INVALID`, data.message || 'Invalid number format.');
                 }
             } catch (err) {
-                showAdpeToast(false, 'Checker Error', err.message);
+                showAdpeToast(false, 'TG Service Offline', 'Local checker service not responding. Run START_TG_CHECKER.bat');
             } finally {
                 tgCheckBtn.disabled = false;
-                tgCheckBtn.textContent = 'Check TG';
+                tgCheckBtn.textContent = 'Check';
                 tgNumInput.select();
             }
         }
@@ -1461,11 +1344,6 @@
                 }
             });
         }
-
-        pingTgService();
-        setInterval(pingTgService, 15000);
-        fetchTgCount();
-        setInterval(fetchTgCount, 15000);
     </script>
 </body>
 </html>
