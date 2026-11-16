@@ -39,6 +39,19 @@
             gap: 10px;
         }
 
+        .checkers-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .checker-section-divider {
+            width: 1px;
+            height: 24px;
+            background: #262626;
+        }
+
         .adpe-checker-bar {
             display: flex;
             align-items: center;
@@ -74,7 +87,7 @@
             outline: none;
             color: #ffffff;
             font-size: 0.82rem;
-            width: 135px;
+            width: 125px;
             padding: 5px 0;
             font-family: inherit;
         }
@@ -128,6 +141,124 @@
             padding: 5px 9px;
             border-radius: 6px;
             white-space: nowrap;
+        }
+
+        /* Telegram Checker Styles */
+        .tg-checker-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tg-input-group {
+            display: flex;
+            align-items: center;
+            background: #09141c;
+            border: 1px solid #1a3245;
+            border-radius: 8px;
+            padding: 2px 8px;
+            transition: border-color 0.15s;
+        }
+
+        .tg-input-group:focus-within {
+            border-color: #229ed9;
+        }
+
+        .tg-prefix-select {
+            background: transparent;
+            border: none;
+            color: #229ed9;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-right: 4px;
+            outline: none;
+            cursor: pointer;
+            padding: 4px 0;
+        }
+
+        .tg-prefix-select option {
+            background: #111111;
+            color: #ffffff;
+        }
+
+        #tg-num-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #ffffff;
+            font-size: 0.82rem;
+            width: 125px;
+            padding: 5px 0;
+            font-family: inherit;
+        }
+
+        #tg-num-input::placeholder {
+            color: #43647b;
+        }
+
+        #tg-paste-btn {
+            background: transparent;
+            border: none;
+            color: #7296b0;
+            cursor: pointer;
+            font-size: 0.82rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        #tg-paste-btn:hover {
+            color: #ffffff;
+        }
+
+        #tg-check-btn {
+            background: #229ed9;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.15s;
+            white-space: nowrap;
+        }
+
+        #tg-check-btn:hover {
+            opacity: 0.88;
+        }
+
+        #tg-check-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .tg-count-pill {
+            background: #09141c;
+            border: 1px solid #1a3245;
+            color: #7dbce3;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 5px 9px;
+            border-radius: 6px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .service-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 6px #22c55e;
+            display: inline-block;
+        }
+
+        .service-dot.offline {
+            background: #eab308;
+            box-shadow: none;
         }
 
         /* AdPe Result Toast */
@@ -376,15 +507,18 @@
                 padding: 10px 14px;
                 gap: 8px;
             }
-            #adpe-num-input {
-                width: 105px;
+            .checker-section-divider {
+                display: none;
+            }
+            #adpe-num-input, #tg-num-input {
+                width: 95px;
                 font-size: 0.78rem;
             }
-            #adpe-check-btn {
+            #adpe-check-btn, #tg-check-btn {
                 padding: 5px 9px;
                 font-size: 0.75rem;
             }
-            .adpe-count-pill {
+            .adpe-count-pill, .tg-count-pill {
                 display: none;
             }
             .input-form {
@@ -506,23 +640,56 @@
 </head>
 <body>
 
-    <!-- Top Bar: AdPe Number Checker + Clear Button -->
+    <!-- Top Bar: AdPe + Telegram Account Checker + Clear Button -->
     <div class="top-bar">
-        <div class="adpe-checker-bar">
-            <div class="adpe-input-group">
-                <span class="adpe-prefix">+91</span>
-                <input 
-                    type="tel" 
-                    id="adpe-num-input" 
-                    placeholder="AdPe number..." 
-                    maxlength="16"
-                    autocomplete="off"
-                >
-                <button type="button" id="adpe-paste-btn" title="Paste number">📋</button>
+        <div class="checkers-wrapper">
+            <!-- AdPe Number Checker -->
+            <div class="adpe-checker-bar">
+                <div class="adpe-input-group">
+                    <span class="adpe-prefix">+91</span>
+                    <input 
+                        type="tel" 
+                        id="adpe-num-input" 
+                        placeholder="AdPe number..." 
+                        maxlength="16"
+                        autocomplete="off"
+                    >
+                    <button type="button" id="adpe-paste-btn" title="Paste number">📋</button>
+                </div>
+                <button type="button" id="adpe-check-btn">Check</button>
+                <span class="adpe-count-pill" id="adpe-db-count" title="AdPe numbers saved in Cloud DB">AdPe: --</span>
             </div>
-            <button type="button" id="adpe-check-btn">Check</button>
-            <span class="adpe-count-pill" id="adpe-db-count" title="AdPe numbers saved in Cloud DB">AdPe: --</span>
+
+            <div class="checker-section-divider"></div>
+
+            <!-- Telegram Account Checker -->
+            <div class="tg-checker-bar">
+                <div class="tg-input-group">
+                    <select id="tg-prefix-select" class="tg-prefix-select" title="Country Code">
+                        <option value="+62">🇮🇩 +62</option>
+                        <option value="+91">🇮🇳 +91</option>
+                        <option value="+56">🇨🇱 +56</option>
+                        <option value="+57">🇨🇴 +57</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="">🌐 Full</option>
+                    </select>
+                    <input 
+                        type="tel" 
+                        id="tg-num-input" 
+                        placeholder="Telegram number..." 
+                        maxlength="20"
+                        autocomplete="off"
+                    >
+                    <button type="button" id="tg-paste-btn" title="Paste number">📋</button>
+                </div>
+                <button type="button" id="tg-check-btn" title="Check if Telegram account exists">Check TG</button>
+                <span class="tg-count-pill" id="tg-db-count" title="Telegram numbers status & Live Service">
+                    <span class="service-dot" id="tg-service-dot" title="Live Telegram MTProto Service Online"></span>
+                    <span id="tg-count-text">TG: --</span>
+                </span>
+            </div>
         </div>
+
         <button class="clear-btn" id="open-clear-modal">Clear</button>
     </div>
 
@@ -1067,6 +1234,212 @@
 
         fetchAdpeCount();
         setInterval(fetchAdpeCount, 15000);
+
+        // ==========================================
+        // TELEGRAM ACCOUNT CHECKER (LIVE MTPROTO + FIREBASE)
+        // ==========================================
+        const FIREBASE_TG_URL = 'https://shoaib-gaurd-default-rtdb.firebaseio.com/tg_numbers';
+        const TG_LOCAL_API = 'http://127.0.0.1:5055';
+        const tgNumInput = document.getElementById('tg-num-input');
+        const tgPrefixSelect = document.getElementById('tg-prefix-select');
+        const tgPasteBtn = document.getElementById('tg-paste-btn');
+        const tgCheckBtn = document.getElementById('tg-check-btn');
+        const tgDbCount = document.getElementById('tg-count-text');
+        const tgServiceDot = document.getElementById('tg-service-dot');
+
+        function normalizeTgPhone(raw, prefix) {
+            let cleaned = (raw || '').trim();
+            if (cleaned.startsWith('+')) return cleaned;
+            const digits = cleaned.replace(/\D/g, '');
+            if (!digits) return '';
+            
+            // Check if digits already include country code
+            if (digits.startsWith('62') && digits.length >= 11) return '+' + digits;
+            if (digits.startsWith('91') && digits.length === 12) return '+' + digits;
+            if (digits.startsWith('56') && digits.length >= 10) return '+' + digits;
+            if (digits.startsWith('57') && digits.length >= 10) return '+' + digits;
+            if (digits.startsWith('1') && digits.length === 11) return '+' + digits;
+
+            const normDigits = digits.startsWith('0') ? digits.slice(1) : digits;
+            const p = prefix || '+62';
+            return (p.startsWith('+') ? p : '+' + p) + normDigits;
+        }
+
+        async function pingTgService() {
+            try {
+                const ctrl = new AbortController();
+                const tid = setTimeout(() => ctrl.abort(), 2000);
+                const res = await fetch(`${TG_LOCAL_API}/health`, { signal: ctrl.signal });
+                clearTimeout(tid);
+                if (res.ok) {
+                    if (tgServiceDot) {
+                        tgServiceDot.className = 'service-dot';
+                        tgServiceDot.title = 'Live MTProto Telegram Service Online';
+                    }
+                    return true;
+                }
+            } catch (e) {}
+            if (tgServiceDot) {
+                tgServiceDot.className = 'service-dot offline';
+                tgServiceDot.title = 'TG Service Offline (Run START_TG_CHECKER.bat)';
+            }
+            return false;
+        }
+
+        async function fetchTgCount() {
+            try {
+                const res = await fetch(`${FIREBASE_TG_URL}.json?shallow=true`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const count = data ? Object.keys(data).length : 0;
+                    if (tgDbCount) tgDbCount.textContent = `TG: ${count}`;
+                }
+            } catch (e) {}
+        }
+
+        async function checkTgNumber(rawVal) {
+            if (!rawVal) return;
+            const prefix = tgPrefixSelect ? tgPrefixSelect.value : '+62';
+            const fullPhone = normalizeTgPhone(rawVal, prefix);
+            const digitsOnly = fullPhone.replace(/\D/g, '');
+
+            if (digitsOnly.length < 8) {
+                showAdpeToast(false, 'Invalid TG Number', 'Please enter a valid phone number.');
+                tgNumInput.focus();
+                return;
+            }
+
+            tgCheckBtn.disabled = true;
+            tgCheckBtn.textContent = '...';
+
+            try {
+                // 1. Check local fast MTProto service
+                let localResult = null;
+                try {
+                    const ctrl = new AbortController();
+                    const tid = setTimeout(() => ctrl.abort(), 4500);
+                    const resp = await fetch(`${TG_LOCAL_API}/check?phone=${encodeURIComponent(fullPhone)}`, { signal: ctrl.signal });
+                    clearTimeout(tid);
+                    if (resp.ok) {
+                        localResult = await resp.json();
+                        if (tgServiceDot) tgServiceDot.className = 'service-dot';
+                    }
+                } catch (err) {
+                    if (tgServiceDot) tgServiceDot.className = 'service-dot offline';
+                }
+
+                // 2. Check Firebase Cloud DB
+                const safeKey = fullPhone.replace(/\+/g, '');
+                let existingCloud = null;
+                try {
+                    const cloudRes = await fetch(`${FIREBASE_TG_URL}/${safeKey}.json`);
+                    if (cloudRes.ok) existingCloud = await cloudRes.json();
+                } catch (e) {}
+
+                const nowStr = formatAdpeTime();
+
+                if (localResult && localResult.registered) {
+                    // ACCOUNT EXISTS ON TELEGRAM!
+                    playAdpeSound('duplicate');
+                    const details = `ID: ${localResult.id} • ${localResult.name || 'User'} ${localResult.username ? '(@' + localResult.username + ')' : ''}`;
+                    showAdpeToast(false, `${fullPhone} TG ACCOUNT EXISTS!`, `Already registered on Telegram (${details}). CANCEL / DO NOT USE!`);
+
+                    // Record to cloud DB
+                    fetch(`${FIREBASE_TG_URL}/${safeKey}.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            raw: fullPhone,
+                            status: 'registered',
+                            exists: true,
+                            tgId: localResult.id,
+                            name: localResult.name,
+                            username: localResult.username,
+                            time: nowStr,
+                            platform: 'telegram'
+                        })
+                    }).then(fetchTgCount);
+
+                } else if (localResult && !localResult.registered) {
+                    // ACCOUNT DOES NOT EXIST (CLEAN / FRESH)!
+                    playAdpeSound('fresh');
+                    showAdpeToast(true, `${fullPhone} FRESH NUMBER!`, 'No Telegram account exists! Safe to buy & auto-sent to chat.');
+
+                    // Record to cloud DB
+                    await fetch(`${FIREBASE_TG_URL}/${safeKey}.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            raw: fullPhone,
+                            status: 'clean',
+                            exists: false,
+                            time: nowStr,
+                            firstSeen: nowStr,
+                            platform: 'telegram'
+                        })
+                    });
+
+                    fetchTgCount();
+                    // Automatically dispatch fresh number into live chat room!
+                    sendMessage(fullPhone);
+                    tgNumInput.value = '';
+
+                } else {
+                    // MTProto service was offline -> check cloud fallback
+                    if (existingCloud && existingCloud.exists) {
+                        playAdpeSound('duplicate');
+                        showAdpeToast(false, `${fullPhone} TG REGISTERED (DB)!`, `Already saved as registered (${existingCloud.time || 'earlier'}).`);
+                    } else if (existingCloud && existingCloud.exists === false) {
+                        playAdpeSound('fresh');
+                        showAdpeToast(true, `${fullPhone} FRESH (DB)!`, 'Saved as clean in Cloud DB & auto-sent to chat.');
+                        sendMessage(fullPhone);
+                        tgNumInput.value = '';
+                    } else {
+                        showAdpeToast(false, `${fullPhone} Service Offline`, 'Local MTProto checker offline. Run START_TG_CHECKER.bat on PC.');
+                    }
+                }
+            } catch (err) {
+                showAdpeToast(false, 'Checker Error', err.message);
+            } finally {
+                tgCheckBtn.disabled = false;
+                tgCheckBtn.textContent = 'Check TG';
+                tgNumInput.select();
+            }
+        }
+
+        if (tgCheckBtn) {
+            tgCheckBtn.addEventListener('click', () => {
+                checkTgNumber(tgNumInput.value);
+            });
+        }
+
+        if (tgNumInput) {
+            tgNumInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    checkTgNumber(tgNumInput.value);
+                }
+            });
+        }
+
+        if (tgPasteBtn) {
+            tgPasteBtn.addEventListener('click', async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        tgNumInput.value = text;
+                        checkTgNumber(text);
+                    }
+                } catch (e) {
+                    tgNumInput.focus();
+                }
+            });
+        }
+
+        pingTgService();
+        setInterval(pingTgService, 15000);
+        fetchTgCount();
+        setInterval(fetchTgCount, 15000);
     </script>
 </body>
 </html>
