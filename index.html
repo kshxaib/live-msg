@@ -1338,11 +1338,11 @@
 
                 const nowStr = formatAdpeTime();
 
-                if (localResult && localResult.registered) {
-                    // ACCOUNT EXISTS ON TELEGRAM!
+                if (localResult && localResult.status === 'REGISTERED') {
+                    // 1. LIVE ONLINE: ACCOUNT ALREADY EXISTS ON TELEGRAM
                     playAdpeSound('duplicate');
                     const details = `ID: ${localResult.id} • ${localResult.name || 'User'} ${localResult.username ? '(@' + localResult.username + ')' : ''}`;
-                    showAdpeToast(false, `${fullPhone} TG ACCOUNT EXISTS!`, `Already registered on Telegram (${details}). CANCEL / DO NOT USE!`);
+                    showAdpeToast(false, `🚨 ${fullPhone} ACCOUNT EXISTS!`, `Telegram Online Check: Active user found (${details}). CANCEL / DO NOT BUY!`);
 
                     // Record to cloud DB
                     fetch(`${FIREBASE_TG_URL}/${safeKey}.json`, {
@@ -1352,6 +1352,7 @@
                             raw: fullPhone,
                             status: 'registered',
                             exists: true,
+                            banned: false,
                             tgId: localResult.id,
                             name: localResult.name,
                             username: localResult.username,
@@ -1360,10 +1361,34 @@
                         })
                     }).then(fetchTgCount);
 
-                } else if (localResult && !localResult.registered) {
-                    // ACCOUNT DOES NOT EXIST (CLEAN / FRESH)!
+                } else if (localResult && localResult.status === 'BANNED') {
+                    // 2. LIVE ONLINE: NUMBER IS BANNED BY TELEGRAM!
+                    playAdpeSound('duplicate');
+                    showAdpeToast(false, `🚫 ${fullPhone} NUMBER BANNED!`, 'Telegram Online Check: Number is BANNED from Telegram (PHONE_NUMBER_BANNED). DO NOT BUY!');
+
+                    // Record to cloud DB as banned
+                    fetch(`${FIREBASE_TG_URL}/${safeKey}.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            raw: fullPhone,
+                            status: 'banned',
+                            exists: false,
+                            banned: true,
+                            time: nowStr,
+                            platform: 'telegram'
+                        })
+                    }).then(fetchTgCount);
+
+                } else if (localResult && localResult.status === 'INVALID') {
+                    // 3. LIVE ONLINE: INVALID NUMBER FORMAT
+                    playAdpeSound('duplicate');
+                    showAdpeToast(false, `⚠️ ${fullPhone} INVALID NUMBER!`, 'Telegram Online Check: PHONE_NUMBER_INVALID. Check country code.');
+
+                } else if (localResult && localResult.status === 'CLEAN_FRESH') {
+                    // 4. LIVE ONLINE: 100% CLEAN AND NOT BANNED!
                     playAdpeSound('fresh');
-                    showAdpeToast(true, `${fullPhone} FRESH NUMBER!`, 'No Telegram account exists! Safe to buy & auto-sent to chat.');
+                    showAdpeToast(true, `✅ ${fullPhone} 100% CLEAN & FRESH!`, 'Telegram Online Check: No account exists & NOT banned! Safe to buy & auto-sent to chat.');
 
                     // Record to cloud DB
                     await fetch(`${FIREBASE_TG_URL}/${safeKey}.json`, {
@@ -1373,6 +1398,7 @@
                             raw: fullPhone,
                             status: 'clean',
                             exists: false,
+                            banned: false,
                             time: nowStr,
                             firstSeen: nowStr,
                             platform: 'telegram'
