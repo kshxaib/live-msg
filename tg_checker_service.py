@@ -1,3 +1,4 @@
+import os
 import asyncio
 from aiohttp import web
 from opentele2.td import TDesktop
@@ -17,7 +18,8 @@ guest_client = None
 async def init_tg():
     global client, guest_client
     print("1. Connecting active Telethon client (acc_1)...")
-    td = TDesktop(r"D:\Shoaib\tg-accounts\acc_1\tdata")
+    acc_1_path = r"E:\Shoaib\tg-accounts\acc_1\tdata" if os.path.exists(r"E:\Shoaib\tg-accounts\acc_1\tdata") else r"D:\Shoaib\tg-accounts\acc_1\tdata"
+    td = TDesktop(acc_1_path)
     client = await td.ToTelethon(session=MemorySession(), flag=UseCurrentSession, receive_updates=False)
     await client.connect()
     me = await client.get_me()

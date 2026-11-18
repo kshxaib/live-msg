@@ -143,6 +143,98 @@
             white-space: nowrap;
         }
 
+        /* Folk Number Checker Styles */
+        .folk-checker-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .folk-input-group {
+            display: flex;
+            align-items: center;
+            background: #150f24;
+            border: 1px solid #362254;
+            border-radius: 8px;
+            padding: 2px 8px;
+            transition: border-color 0.15s;
+        }
+
+        .folk-input-group:focus-within {
+            border-color: #8b5cf6;
+        }
+
+        .folk-prefix {
+            font-size: 0.75rem;
+            color: #a78bfa;
+            font-weight: 600;
+            margin-right: 6px;
+            user-select: none;
+        }
+
+        #folk-num-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #ffffff;
+            font-size: 0.82rem;
+            width: 125px;
+            padding: 5px 0;
+            font-family: inherit;
+        }
+
+        #folk-num-input::placeholder {
+            color: #6d5b88;
+        }
+
+        #folk-paste-btn {
+            background: transparent;
+            border: none;
+            color: #a78bfa;
+            cursor: pointer;
+            font-size: 0.82rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        #folk-paste-btn:hover {
+            color: #ffffff;
+        }
+
+        #folk-check-btn {
+            background: #8b5cf6;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.15s, background-color 0.15s;
+            white-space: nowrap;
+        }
+
+        #folk-check-btn:hover {
+            background: #7c3aed;
+        }
+
+        #folk-check-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .folk-count-pill {
+            background: #191228;
+            border: 1px solid #362254;
+            color: #c4b5fd;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 5px 9px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
         /* Simple Telegram Checker Styles */
         .tg-checker-bar {
             display: flex;
@@ -642,6 +734,25 @@
                 </div>
                 <button type="button" id="adpe-check-btn">Check</button>
                 <span class="adpe-count-pill" id="adpe-db-count" title="AdPe numbers saved in Cloud DB">AdPe: --</span>
+            </div>
+
+            <div class="checker-section-divider"></div>
+
+            <!-- Folk Number Checker -->
+            <div class="folk-checker-bar">
+                <div class="folk-input-group">
+                    <span class="folk-prefix">+91</span>
+                    <input 
+                        type="tel" 
+                        id="folk-num-input" 
+                        placeholder="Folk number..." 
+                        maxlength="16"
+                        autocomplete="off"
+                    >
+                    <button type="button" id="folk-paste-btn" title="Paste & Check Folk number">📋</button>
+                </div>
+                <button type="button" id="folk-check-btn">Check</button>
+                <span class="folk-count-pill" id="folk-db-count" title="Folk numbers saved in Cloud DB">Folk: --</span>
             </div>
 
             <div class="checker-section-divider"></div>
@@ -1207,6 +1318,122 @@
 
         fetchAdpeCount();
         setInterval(fetchAdpeCount, 15000);
+
+        // ==========================================
+        // FOLK NUMBER CHECKER (FIREBASE CLOUD DB)
+        // ==========================================
+        const FIREBASE_FOLK_URL = 'https://shoaib-gaurd-default-rtdb.firebaseio.com/folk_numbers';
+        const folkNumInput = document.getElementById('folk-num-input');
+        const folkPasteBtn = document.getElementById('folk-paste-btn');
+        const folkCheckBtn = document.getElementById('folk-check-btn');
+        const folkDbCount = document.getElementById('folk-db-count');
+
+        async function fetchFolkCount() {
+            try {
+                const res = await fetch(`${FIREBASE_FOLK_URL}.json?shallow=true`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const count = data ? Object.keys(data).length : 0;
+                    if (folkDbCount) folkDbCount.textContent = `Folk: ${count}`;
+                }
+            } catch (e) {}
+        }
+
+        async function checkFolkNumber(rawVal) {
+            if (!rawVal) return;
+            const digits = rawVal.replace(/\D/g, '');
+            const norm = digits.length >= 10 ? digits.slice(-10) : digits;
+
+            if (norm.length < 10) {
+                showAdpeToast(false, 'Invalid Number', 'Enter a valid 10-digit mobile number.');
+                folkNumInput.focus();
+                return;
+            }
+
+            folkCheckBtn.disabled = true;
+            folkCheckBtn.textContent = '...';
+
+            try {
+                const res = await fetch(`${FIREBASE_FOLK_URL}/${norm}.json`);
+                const existing = await res.json();
+
+                if (existing) {
+                    // DUPLICATE IN CLOUD DB
+                    playAdpeSound('duplicate');
+                    const addedTime = existing.firstSeen || existing.time || 'Earlier';
+                    showAdpeToast(false, `+91 ${norm} DUPLICATE!`, `Already used on Folk (${addedTime}). CANCEL / DON'T USE!`);
+                } else {
+                    // FRESH NUMBER -> SAVE DIRECTLY TO CLOUD DB
+                    const nowStr = formatAdpeTime();
+                    const record = {
+                        raw: '+91 ' + norm,
+                        status: 'received',
+                        time: nowStr,
+                        firstSeen: nowStr,
+                        platform: 'folk'
+                    };
+
+                    await fetch(`${FIREBASE_FOLK_URL}/${norm}.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(record)
+                    });
+
+                    playAdpeSound('fresh');
+                    showAdpeToast(true, `${norm} FRESH!`, 'Saved to Folk Cloud DB & auto-sent to chat!');
+                    fetchFolkCount();
+
+                    // Automatically send fresh number to live chat
+                    sendMessage(norm);
+                    folkNumInput.value = '';
+                }
+            } catch (err) {
+                showAdpeToast(false, 'Cloud Error', err.message);
+            } finally {
+                folkCheckBtn.disabled = false;
+                folkCheckBtn.textContent = 'Check';
+                folkNumInput.select();
+            }
+        }
+
+        if (folkCheckBtn) {
+            folkCheckBtn.addEventListener('click', () => {
+                checkFolkNumber(folkNumInput.value);
+            });
+        }
+
+        if (folkNumInput) {
+            folkNumInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    checkFolkNumber(folkNumInput.value);
+                }
+            });
+            folkNumInput.addEventListener('paste', () => {
+                setTimeout(() => {
+                    if (folkNumInput.value) {
+                        checkFolkNumber(folkNumInput.value);
+                    }
+                }, 50);
+            });
+        }
+
+        if (folkPasteBtn) {
+            folkPasteBtn.addEventListener('click', async () => {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        folkNumInput.value = text;
+                        checkFolkNumber(text);
+                    }
+                } catch (e) {
+                    folkNumInput.focus();
+                }
+            });
+        }
+
+        fetchFolkCount();
+        setInterval(fetchFolkCount, 15000);
 
         // ==========================================
         // TELEGRAM NUMBER CHECKER (STANDALONE CHECK)
